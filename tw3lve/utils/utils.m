@@ -1656,7 +1656,7 @@ void installSSH()
 {
     LOGME("Installing SSH Only!");
     
-    NSString *substrateFile = get_path_res(@"bootstrap/sileo/ssh.tat");
+    NSString *substrateFile = get_path_res(@"bootstrap/sileo/ssh.tar");
     ArchiveFile *subBSFile = [ArchiveFile archiveWithFile:substrateFile];
     [subBSFile extractToPath:@"/"];
         
