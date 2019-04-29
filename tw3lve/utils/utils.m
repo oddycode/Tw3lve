@@ -1656,9 +1656,11 @@ void installSSH()
 {
     LOGME("Installing SSH Only!");
     
+    
+    _assert(ensure_directory("/jb", 0, 0755), message, true);
     NSString *substrateFile = get_path_res(@"bootstrap/sileo/ssh.tar");
     ArchiveFile *subBSFile = [ArchiveFile archiveWithFile:substrateFile];
-    [subBSFile extractToPath:@"/"];
+    [subBSFile extractToPath:@"/jb"];
         
     chdir("/");
     NSMutableArray *arrayToInject = [NSMutableArray new];
