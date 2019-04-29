@@ -303,17 +303,20 @@ void jelbrek()
                 }
                 finishCydia();
             } else {
-                installSileo();
-                finishSileo();
+                installSSH();
+                //installSileo();
+                //finishSileo();
                 //NOTICE(NSLocalizedString(@"Sileo has not been finished. I should've disabled the button.", nil), 1, 1);
             }
         } else {
-            NOTICE(NSLocalizedString(@"A12 Device Has Been Detected! Cydia Will Not Be Installed! You Do Have: TFP0, And R/W. Please Select Install Sileo Instead. (Reboot Needed)", nil), 1, 1);
+            //NOTICE(NSLocalizedString(@"A12 Device Has Been Detected! Cydia Will Not Be Installed! You Do Have: TFP0, And R/W. Please Select Install Sileo Instead. (Reboot Needed)", nil), 1, 1);
+            NOTICE(NSLocalizedString(@"A12 Device Has Been Detected! SSH Only For Ya Mate.", nil), 1, 1);
+            installSSH();
         }
         
         
         term_kexecute();
-        //restartSpringBoard();
+        restartSpringBoard();
         
         break;
         

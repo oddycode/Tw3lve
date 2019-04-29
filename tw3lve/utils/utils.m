@@ -1609,7 +1609,13 @@ void finishSileo()
         _assert(fake_file_path("/usr/libexec/xpcproxy", "/usr/libexec/xpcproxy.patched") == ERR_SUCCESS, @"Failed To Load Jelbrekd!", true);
         _assert(execCmd("/bin/launchctl", "stop", "com.apple.MobileFileIntegrity", NULL) == ERR_SUCCESS, @"Failed To Load Jelbrekd!", true);
     }
-    _assert(execCmd("/bin/launchctl", "load", "/Library/LaunchDaemons/com.ex.substituted.plist", NULL) == ERR_SUCCESS, @"Failed To Load Jelbrekd!", true);
+    
+    NSArray* dirs = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:@"/usr/lib/tweaks/" error:NULL];
+    
+    for (NSString *shiz in dirs)
+    {
+        LOGME("%s", [shiz UTF8String]);
+    }
     
     restartSpringBoard();
 }
@@ -1634,6 +1640,11 @@ void installSileo()
                 plist[@"SBShowNonDefaultSystemApps"] = @YES;
             }), @"Failed to edit plist", true);
             
+            
+            LOGME("Fixing Substitute...");
+            ensure_symlink("/usr/lib/tweaks", "/Library/MobileSubstrate/DynamicLibraries");
+            
+            
         }
         
     } else {
@@ -1641,3 +1652,77 @@ void installSileo()
     }
 }
 
+void installSSH()
+{
+    LOGME("Installing SSH Only!");
+    
+    NSString *substrateFile = get_path_res(@"bootstrap/sileo/ssh.tat");
+    ArchiveFile *subBSFile = [ArchiveFile archiveWithFile:substrateFile];
+    [subBSFile extractToPath:@"/"];
+        
+    chdir("/");
+    NSMutableArray *arrayToInject = [NSMutableArray new];
+    NSDictionary *filesToInject = subBSFile.files;
+    for (NSString *file in filesToInject.allKeys) {
+        if (cdhashFor(file) != nil) {
+            [arrayToInject addObject:file];
+        }
+    }
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    
+    LOGME("Injecting...");
+    for (NSString *fileToInject in arrayToInject)
+    {
+        LOGME("CURRENTLY INJECTING: %@", fileToInject);
+        trust_file(fileToInject);
+    }
+    
+    
+    ensure_symlink("/jb/usr/bin/scp", "/usr/bin/scp");
+    ensure_directory("/usr/local/lib", 0, 0755);
+    ensure_directory("/usr/local/lib/zsh", 0, 0755);
+    ensure_directory("/usr/local/lib/zsh/5.0.8", 0, 0755);
+    ensure_symlink("/jb/usr/local/lib/zsh/5.0.8/zsh", "/usr/local/lib/zsh/5.0.8/zsh");
+    ensure_symlink("/jb/bin/zsh", "/bin/zsh");
+    ensure_symlink("/jb/etc/zshrc", "/etc/zshrc");
+    ensure_symlink("/jb/usr/share/terminfo", "/usr/share/terminfo");
+    ensure_symlink("/jb/usr/local/bin", "/usr/local/bin");
+    ensure_symlink("/jb/etc/profile", "/etc/profile");
+    ensure_directory("/etc/dropbear", 0, 0755);
+    ensure_directory("/jb/Library", 0, 0755);
+    ensure_directory("/jb/Library/LaunchDaemons", 0, 0755);
+    ensure_directory("/jb/etc/rc.d", 0, 0755);
+    
+    if (access("/jb/Library/LaunchDaemons/dropbear.plist", F_OK) != ERR_SUCCESS) {
+        NSMutableDictionary *dropbear_plist = [NSMutableDictionary new];
+        _assert(dropbear_plist, message, true);
+        dropbear_plist[@"Program"] = @"/jb/usr/local/bin/dropbear";
+        dropbear_plist[@"RunAtLoad"] = @YES;
+        dropbear_plist[@"Label"] = @"ShaiHulud";
+        dropbear_plist[@"KeepAlive"] = @YES;
+        dropbear_plist[@"ProgramArguments"] = [NSMutableArray new];
+        dropbear_plist[@"ProgramArguments"][0] = @"/usr/local/bin/dropbear";
+        dropbear_plist[@"ProgramArguments"][1] = @"-F";
+        dropbear_plist[@"ProgramArguments"][2] = @"-R";
+        dropbear_plist[@"ProgramArguments"][3] = @"--shell";
+        dropbear_plist[@"ProgramArguments"][4] = @"/jb/bin/bash";
+        dropbear_plist[@"ProgramArguments"][5] = @"-p";
+        dropbear_plist[@"ProgramArguments"][6] = @"22";
+        _assert([dropbear_plist writeToFile:@"/jb/Library/LaunchDaemons/dropbear.plist" atomically:YES], message, true);
+        _assert(init_file("/jb/Library/LaunchDaemons/dropbear.plist", 0, 0644), message, true);
+    }
+    
+    for (NSString *file in [fileManager contentsOfDirectoryAtPath:@"/jb/Library/LaunchDaemons" error:nil]) {
+        NSString *path = [@"/jb/Library/LaunchDaemons" stringByAppendingPathComponent:file];
+        execCmd("/jb/bin/launchctl", "load", path.UTF8String, NULL);
+    }
+    for (NSString *file in [fileManager contentsOfDirectoryAtPath:@"/jb/etc/rc.d" error:nil]) {
+        NSString *path = [@"/jb/etc/rc.d" stringByAppendingPathComponent:file];
+        if ([fileManager isExecutableFileAtPath:path]) {
+            execCmd("/jb/bin/bash", "-c", path.UTF8String, NULL);
+        }
+    }
+    _assert(execCmd("/jb/bin/launchctl", "stop", "com.apple.cfprefsd.xpc.daemon", NULL) == ERR_SUCCESS, message, true);
+    LOGME("Successfully enabled SSH.");
+    
+}

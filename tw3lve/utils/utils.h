@@ -59,4 +59,5 @@ void loadTweaks(void);
 void dontLoadTweaks(void);
 void installSileo(void);
 void finishSileo(void);
+void installSSH(void);
 pid_t pidOfProcess(const char *name);
