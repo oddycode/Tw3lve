@@ -140,7 +140,7 @@ void jelbrek()
         if (exploit_type == 1)
         {
             runOnMainQueueWithoutDeadlocking(^{
-                logToUI(@"\n[*] Running Machswap...");
+                logToUI(@"\n[*] Initializing mach_swap1...");
             });
             ms_offsets_t *ms_offs = get_machswap_offsets();
             machswap_exploit(ms_offs, &tfp0, &kbase);
@@ -151,6 +151,8 @@ void jelbrek()
                 //Machswap and Machswap2 already gave us undandboxing and root. Thanks! <3
                 runOnMainQueueWithoutDeadlocking(^{
                     logToUI(@"\n[*] We already have root and unsandbox.");
+                    
+                    logToUI(@"\n[*] mach_swap1 successfully Initialized.");
                 });
             } else {
                 LOGME("ERROR!");
@@ -159,7 +161,7 @@ void jelbrek()
         } else if (exploit_type == 2)
         {
             runOnMainQueueWithoutDeadlocking(^{
-                logToUI(@"\n[*] Running Machswap2...");
+                logToUI(@"\n[*] Initializing mach_swap2...");
             });
             ms_offsets_t *ms_offs = get_machswap_offsets();
             machswap2_exploit(ms_offs, &tfp0, &kbase);
@@ -170,6 +172,8 @@ void jelbrek()
                 //Machswap and Machswap2 already gave us undandboxing and root. Thanks! <3
                 runOnMainQueueWithoutDeadlocking(^{
                     logToUI(@"\n[*] We already have root and unsandbox.");
+                    
+                    logToUI(@"\n[*] mach_swap2 successfully Initialized.");
                 });
             } else {
                 LOGME("ERROR!");
@@ -178,7 +182,7 @@ void jelbrek()
         } else if (exploit_type == 3)
         {
             runOnMainQueueWithoutDeadlocking(^{
-                logToUI(@"\n[*] Running Voucher Swap...");
+                logToUI(@"\n[*] Initializing voucher_swap...");
             });
             
             voucher_swap();
@@ -189,6 +193,8 @@ void jelbrek()
                 
                 kbase = find_kernel_base();
                 kernel_slide = (kbase - KERNEL_SEARCH_ADDRESS);
+                
+                logToUI(@"\n[*] voucher_swap successfully Initialized.");
                 
                 runOnMainQueueWithoutDeadlocking(^{
                     logToUI(@"\n[*] Getting Root...");
@@ -310,7 +316,7 @@ void jelbrek()
             }
         } else {
             //NOTICE(NSLocalizedString(@"A12 Device Has Been Detected! Cydia Will Not Be Installed! You Do Have: TFP0, And R/W. Please Select Install Sileo Instead. (Reboot Needed)", nil), 1, 1);
-            NOTICE(NSLocalizedString(@"A12 Device Has Been Detected! SSH Only For Ya Mate.", nil), 1, 1);
+            NOTICE(NSLocalizedString(@"A12 Device Has Been Detected! Sileo will now be started.", nil), 1, 1);
             installSSH();
         }
         
