@@ -15,4 +15,20 @@ This is a completely free and open source Jailbreak, licensed under the Anti-996
 Tw3lve is compatible with A7-A11 devices, with arm64e support (A12(X)) support coming in the near future.
 # Credits
 Thank you to the people who have made Tw3lve possible. Listed in order, Tw3lve team to other important people;
+[@Chr0nicT](https://twitter.com/Chr0nicT) Lead Developer
+
+[@BrandonPlank6](https://twitter.com/BrandonPlank6) UI Developer
  
+[@TotallyNotNero](https://twitter.com/TotallyNotNero) ARM64e Developer and Tester
+
+[@FIRE](https://twitter.com/iiFir3z) UI Developer
+
+[@Bobby](https://twitter.com/Beastmode270) Tester and Developer
+
+[@Michael](https://twitter.com/jedimike4717) Tester
+
+[@pwn20wnd](https://twitter.com/Pwn20wnd) Drama/Jailbreak Developer for unc0ver
+
+[@sbingner](https://twitter.com/sbingner) unc0ver Developer
+
+If there is anyone else I forgot, start a PR!
