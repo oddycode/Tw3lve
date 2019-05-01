@@ -33,6 +33,9 @@
 #include "VarHolder.h"
 #include "proc_info.h"
 #include "libproc.h"
+#include <sys/sysctl.h>
+#include "insert_dylib.h"
+#include "kernel_structs.h"
 
 extern char **environ;
 NSData *lastSystemOutput=nil;
@@ -1231,6 +1234,47 @@ void finishCydia()
                 "\" >/dev/null 2>&1 &");
 }
 
+
+int create_patched_executable_with_dylib(const char *file, const char *dylib) {
+    int rv = 0;
+    if (access(file, F_OK) != ERR_SUCCESS) {
+        rv = -1;
+        goto out;
+    }
+    if (access(dylib, F_OK) != ERR_SUCCESS) {
+        rv = -2;
+        goto out;
+    }
+    const char *patched_file = [@(file) stringByAppendingString:@".patched"].UTF8String;
+    if (access(patched_file, F_OK) == ERR_SUCCESS) {
+        rv = 0;
+        goto out;
+    }
+    if (copyfile(file, patched_file, 0, COPYFILE_ALL) != ERR_SUCCESS) {
+        rv = -3;
+        goto out;
+    }
+    const char *insert_dylib_args[] = { "insert_dylib", "--all-yes", "--inplace", "--overwrite", dylib, patched_file, NULL };
+    if (insert_dylib_main(6, insert_dylib_args) != ERR_SUCCESS) {
+        rv = -4;
+        goto out;
+    }
+    if (execCmd("/usr/libexec/ldid", "-M", "-S", patched_file, NULL) != ERR_SUCCESS) {
+        rv = -5;
+        goto out;
+    }
+    if (injectTrustCache(@[@(patched_file)], GETOFFSET(trustcache), pmap_load_trust_cache) != ERR_SUCCESS) {
+        rv = -6;
+        goto out;
+    }
+    out:
+    if (rv != 0) {
+        clean_file(patched_file);
+    }
+    LOGME("%s(%s, %s): %d", __FUNCTION__, file, dylib, rv);
+    return rv;
+}
+
 void installCydia()
 {
     
@@ -1371,7 +1415,29 @@ void dontLoadTweaks()
 //////////SILEO/////////////
 void extractSubZeroLol()
 {
-    NSString *substrateFile = get_path_res(@"bootstrap/sileo/sub_sileo.tar");
+    NSString *substrateFile = get_path_res(@"bootstrap/sileo/Substitute.tar");
+    ArchiveFile *subBSFile = [ArchiveFile archiveWithFile:substrateFile];
+    [subBSFile extractToPath:@"/"];
+    
+    chdir("/");
+    NSMutableArray *arrayToInject = [NSMutableArray new];
+    NSDictionary *filesToInject = subBSFile.files;
+    for (NSString *file in filesToInject.allKeys) {
+        if (cdhashFor(file) != nil) {
+            [arrayToInject addObject:file];
+        }
+    }
+    LOGME("Injecting...");
+    for (NSString *fileToInject in arrayToInject)
+    {
+        LOGME("CURRENTLY INJECTING: %@", fileToInject);
+        trust_file(fileToInject);
+    }
+}
+
+void extractSubZeroOwO()
+{
+    NSString *substrateFile = get_path_res(@"bootstrap/sileo/RealSubstitute.tar");
     ArchiveFile *subBSFile = [ArchiveFile archiveWithFile:substrateFile];
     [subBSFile extractToPath:@"/"];
     
@@ -1399,39 +1465,311 @@ void extractTest()
     [subBSFile extractToPath:@"/"];
     
     chdir("/");
+    NSMutableArray *arrayToInject = [NSMutableArray new];
+    NSDictionary *filesToInject = subBSFile.files;
+    for (NSString *file in filesToInject.allKeys) {
+        if (cdhashFor(file) != nil) {
+            [arrayToInject addObject:file];
+        }
+    }
+    LOGME("Injecting...");
+    for (NSString *fileToInject in arrayToInject)
+    {
+        LOGME("CURRENTLY INJECTING: %@", fileToInject);
+        trust_file(fileToInject);
+    }
+    
+}
+
+
+void extractRes_Sileo()
+{
+    NSString *resFile = get_path_res(@"bootstrap/sileo/sileo.tar");
+    ArchiveFile *resBSFile = [ArchiveFile archiveWithFile:resFile];
+    [resBSFile extractToPath:@"/"];
+    
+    chdir("/");
+    NSMutableArray *arrayToInject = [NSMutableArray new];
+    NSDictionary *filesToInject = resBSFile.files;
+    for (NSString *file in filesToInject.allKeys) {
+        if (cdhashFor(file) != nil) {
+            [arrayToInject addObject:file];
+        }
+    }
+    LOGME("Injecting...");
+    for (NSString *fileToInject in arrayToInject)
+    {
+        LOGME("CURRENTLY INJECTING: %@", fileToInject);
+        trust_file(fileToInject);
+    }
+    
+}
+
+
+void extractLdid()
+{
+    NSString *resFile = get_path_res(@"bootstrap/sileo/Ldid.tar");
+    ArchiveFile *resBSFile = [ArchiveFile archiveWithFile:resFile];
+    [resBSFile extractToPath:@"/"];
+    
+    chdir("/");
+    NSMutableArray *arrayToInject = [NSMutableArray new];
+    NSDictionary *filesToInject = resBSFile.files;
+    for (NSString *file in filesToInject.allKeys) {
+        if (cdhashFor(file) != nil) {
+            [arrayToInject addObject:file];
+        }
+    }
+    LOGME("Injecting...");
+    for (NSString *fileToInject in arrayToInject)
+    {
+        LOGME("CURRENTLY INJECTING: %@", fileToInject);
+        trust_file(fileToInject);
+    }
+    
+    if (access("/usr/bin/ldid", F_OK) != ERR_SUCCESS) {
+        _assert(access("/usr/libexec/ldid", F_OK) == ERR_SUCCESS, @"Failed to copy over our resources to RootFS.", true);
+        _assert(ensure_symlink("../libexec/ldid", "/usr/bin/ldid"), @"Failed to copy over our resources to RootFS.", true);
+    }
+    
+}
+
+
+
+bool pspawnHookLoaded() {
+    static int request[2] = { CTL_KERN, KERN_BOOTTIME };
+    struct timeval result;
+    size_t result_len = sizeof result;
+    
+    if (access("/var/run/pspawn_hook.ts", F_OK) == ERR_SUCCESS) {
+        NSString *stamp = [NSString stringWithContentsOfFile:@"/var/run/pspawn_hook.ts" encoding:NSUTF8StringEncoding error:NULL];
+        if (stamp != nil && sysctl(request, 2, &result, &result_len, NULL, 0) >= 0) {
+            if ([stamp integerValue] > result.tv_sec) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+int fake_file_path(const char *original_path, const char *fake_path) {
+    int rv = 0;
+    uint64_t original_file_vnode = vnodeForPath(original_path);
+    if (!ISADDR(original_file_vnode)) {
+        rv = -1;
+        goto out;
+    }
+    uint64_t patched_file_vnode = vnodeForPath(fake_path);
+    if (!ISADDR(patched_file_vnode)) {
+        rv = -2;
+        goto out;
+    }
+    struct vnode_struct rvp, fvp;
+    if (!rkbuffer(original_file_vnode, &rvp, sizeof(struct vnode_struct))) {
+        rv = -3;
+        goto out;
+    }
+    if (!rkbuffer(patched_file_vnode, &fvp, sizeof(struct vnode_struct))) {
+        rv = -4;
+        goto out;
+    }
+    fvp.v_usecount = rvp.v_usecount;
+    fvp.v_kusecount = rvp.v_kusecount;
+    fvp.v_parent = rvp.v_parent;
+    fvp.v_freelist = rvp.v_freelist;
+    fvp.v_mntvnodes = rvp.v_mntvnodes;
+    fvp.v_ncchildren = rvp.v_ncchildren;
+    fvp.v_nclinks = rvp.v_nclinks;
+    if (!wkbuffer(original_file_vnode, &fvp, sizeof(struct vnode_struct))) {
+        rv = -4;
+        goto out;
+    }
+    LOGME("%s(%s, %s): %d", __FUNCTION__, original_path, fake_path, rv);
+    out:
+    return rv;
+}
+
+
+void finishSileo()
+{
+    
+    NSArray *resources = @[@"/bin/launchctl",
+                   @"/bin/_launchctl",
+                   @"/usr/lib/amfid_payload.dylib",
+                   @"/usr/libexec/jailbreakd",
+                   @"/usr/lib/pspawn_hook.dylib",
+                   @"/usr/lib/libjailbreak.dylib",
+                   @"/usr/lib/libsubstitute.dylib",
+                   @"/usr/libexec/ldid",
+                   @"/usr/libexec/ldid_wrapper",
+                   @"/usr/libexec/xpcproxy.patched"];
+    
+    for (NSString *toInj in resources)
+    {
+        trust_file(toInj);
+    }
+    
+    systemCmd("echo 'really jailbroken';"
+              "shopt -s nullglob;"
+              "for a in /Library/LaunchDaemons/*.plist;"
+              "do echo loading $a;"
+              "launchctl load \"$a\" ;"
+              "done; ");
+    systemCmd("for file in /etc/rc.d/*; do "
+              "if [[ -x \"$file\" && \"$file\" != \"/etc/rc.d/substrate\" ]]; then "
+              "\"$file\";"
+              "fi;"
+              "done");
+    systemCmd("nohup bash -c \""
+              "sleep 1 ;"
+              "launchctl stop com.apple.mDNSResponder ;"
+              "launchctl stop com.apple.backboardd"
+              "\" >/dev/null 2>&1 &");
+    
+    
+    const char *jbdPidFile = "/var/tmp/jailbreakd.pid";
+    _assert(execCmd("/bin/launchctl", "load", "/jb/jailbreakd.plist", NULL) == ERR_SUCCESS, message, true);
+    _assert(waitForFile(jbdPidFile) == ERR_SUCCESS, message, true);
+    if (!pspawnHookLoaded()) {
+        _assert(create_patched_executable_with_dylib("/usr/libexec/xpcproxy", "/usr/lib/pspawn_hook.dylib") == ERR_SUCCESS, message, true);
+        _assert(fake_file_path("/usr/libexec/xpcproxy", "/usr/libexec/xpcproxy.patched") == ERR_SUCCESS, message, true);
+        _assert(execCmd("/bin/launchctl", "stop", "com.apple.MobileFileIntegrity", NULL) == ERR_SUCCESS, message, true);
+    }
+    LOGME("Successfully loaded Substitute.");
+}
+
+void createJD()
+{
+    NSMutableDictionary *jailbreakd_plist = [NSMutableDictionary new];
+    
+    jailbreakd_plist[@"Label"] = @"jailbreakd";
+    jailbreakd_plist[@"Program"] = @"/usr/libexec/jailbreakd";
+    jailbreakd_plist[@"EnvironmentVariables"] = [NSMutableDictionary new];
+    jailbreakd_plist[@"EnvironmentVariables"][@"KernelBase"] = ADDRSTRING(kbase);
+    jailbreakd_plist[@"EnvironmentVariables"][@"KernProcAddr"] = ADDRSTRING(ReadKernel64(ReadKernel64(GETOFFSET(kernel_task)) + koffset(KSTRUCT_OFFSET_TASK_BSD_INFO)));
+    jailbreakd_plist[@"EnvironmentVariables"][@"ZoneMapOffset"] = ADDRSTRING(GETOFFSET(zone_map_ref) - kernel_slide);
+    jailbreakd_plist[@"EnvironmentVariables"][@"AddRetGadget"] = ADDRSTRING(GETOFFSET(add_x0_x0_0x40_ret));
+    jailbreakd_plist[@"EnvironmentVariables"][@"OSBooleanTrue"] = ADDRSTRING(ReadKernel64(GETOFFSET(OSBoolean_True)));
+    jailbreakd_plist[@"EnvironmentVariables"][@"OSBooleanFalse"] = ADDRSTRING(ReadKernel64(GETOFFSET(OSBoolean_True)) + sizeof(void *));
+    jailbreakd_plist[@"EnvironmentVariables"][@"OSUnserializeXML"] = ADDRSTRING(GETOFFSET(osunserializexml));
+    jailbreakd_plist[@"EnvironmentVariables"][@"Smalloc"] = ADDRSTRING(GETOFFSET(smalloc));
+    jailbreakd_plist[@"EnvironmentVariables"][@"KernelTask"] = ADDRSTRING(GETOFFSET(kernel_task));
+    jailbreakd_plist[@"EnvironmentVariables"][@"PacizaPointerL2TPDomainModuleStart"] = ADDRSTRING(GETOFFSET(paciza_pointer__l2tp_domain_module_start));
+    jailbreakd_plist[@"EnvironmentVariables"][@"PacizaPointerL2TPDomainModuleStop"] = ADDRSTRING(GETOFFSET(paciza_pointer__l2tp_domain_module_stop));
+    jailbreakd_plist[@"EnvironmentVariables"][@"L2TPDomainInited"] = ADDRSTRING(GETOFFSET(l2tp_domain_inited));
+    jailbreakd_plist[@"EnvironmentVariables"][@"SysctlNetPPPL2TP"] = ADDRSTRING(GETOFFSET(sysctl__net_ppp_l2tp));
+    jailbreakd_plist[@"EnvironmentVariables"][@"SysctlUnregisterOid"] = ADDRSTRING(GETOFFSET(sysctl_unregister_oid));
+    jailbreakd_plist[@"EnvironmentVariables"][@"MovX0X4BrX5"] = ADDRSTRING(GETOFFSET(mov_x0_x4__br_x5));
+    jailbreakd_plist[@"EnvironmentVariables"][@"MovX9X0BrX1"] = ADDRSTRING(GETOFFSET(mov_x9_x0__br_x1));
+    jailbreakd_plist[@"EnvironmentVariables"][@"MovX10X3BrX6"] = ADDRSTRING(GETOFFSET(mov_x10_x3__br_x6));
+    jailbreakd_plist[@"EnvironmentVariables"][@"KernelForgePaciaGadget"] = ADDRSTRING(GETOFFSET(kernel_forge_pacia_gadget));
+    jailbreakd_plist[@"EnvironmentVariables"][@"KernelForgePacdaGadget"] = ADDRSTRING(GETOFFSET(kernel_forge_pacda_gadget));
+    jailbreakd_plist[@"EnvironmentVariables"][@"IOUserClientVtable"] = ADDRSTRING(GETOFFSET(IOUserClient__vtable));
+    jailbreakd_plist[@"EnvironmentVariables"][@"IORegistryEntryGetRegistryEntryID"] = ADDRSTRING(GETOFFSET(IORegistryEntry__getRegistryEntryID));
+    jailbreakd_plist[@"UserName"] = @"root";
+    jailbreakd_plist[@"MachServices"] = [NSMutableDictionary new];
+    jailbreakd_plist[@"MachServices"][@"zone.sparkes.jailbreakd"] = [NSMutableDictionary new];
+    jailbreakd_plist[@"MachServices"][@"zone.sparkes.jailbreakd"][@"HostSpecialPort"] = @15;
+    jailbreakd_plist[@"MachServices"][@"cy:jailbreakd"] = [NSMutableDictionary new];
+    jailbreakd_plist[@"MachServices"][@"cy:jailbreakd"][@"HostSpecialPort"] = @15;
+    jailbreakd_plist[@"RunAtLoad"] = @YES;
+    jailbreakd_plist[@"KeepAlive"] = @YES;
+    jailbreakd_plist[@"StandardErrorPath"] = @"/var/log/jailbreakd-stderr.log";
+    jailbreakd_plist[@"StandardOutPath"] = @"/var/log/jailbreakd-stdout.log";
+    
+    _assert([jailbreakd_plist writeToFile:@"/jb/jailbreakd.plist" atomically:YES], @"FAILED JBD", true);
+}
+
+void installSSH()
+{
+    LOGME("Installing SSH Only!");
+    
+    
+    NSString *substrateFile = get_path_res(@"bootstrap/sileo/ssh.tar");
+    ArchiveFile *subBSFile = [ArchiveFile archiveWithFile:substrateFile];
+    [subBSFile extractToPath:@"/jb"];
+    
+    NSMutableArray *arrayToInject = [NSMutableArray new];
+    NSDictionary *filesToInject = subBSFile.files;
+    for (NSString *file in filesToInject.allKeys) {
+        if (cdhashFor(file) != nil) {
+            [arrayToInject addObject:[@"/jb/" stringByAppendingString:file]];
+        }
+    }
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    
+    LOGME("Injecting...");
+    for (NSString *fileToInject in arrayToInject)
+    {
+        LOGME("CURRENTLY INJECTING: %@", fileToInject);
+        trust_file(fileToInject);
+    }
+    
+    
+    ensure_symlink("/jb/usr/bin/scp", "/usr/bin/scp");
+    ensure_directory("/usr/local/lib", 0, 0755);
+    ensure_directory("/usr/local/lib/zsh", 0, 0755);
+    ensure_directory("/usr/local/lib/zsh/5.0.8", 0, 0755);
+    ensure_symlink("/jb/usr/local/lib/zsh/5.0.8/zsh", "/usr/local/lib/zsh/5.0.8/zsh");
+    ensure_symlink("/jb/bin/zsh", "/bin/zsh");
+    ensure_symlink("/jb/etc/zshrc", "/etc/zshrc");
+    ensure_symlink("/jb/usr/share/terminfo", "/usr/share/terminfo");
+    ensure_symlink("/jb/usr/local/bin", "/usr/local/bin");
+    ensure_symlink("/jb/etc/profile", "/etc/profile");
+    ensure_directory("/etc/dropbear", 0, 0755);
+    ensure_directory("/jb/Library", 0, 0755);
+    ensure_directory("/jb/Library/LaunchDaemons", 0, 0755);
+    ensure_directory("/jb/etc/rc.d", 0, 0755);
+    
+    if (access("/jb/Library/LaunchDaemons/dropbear.plist", F_OK) != ERR_SUCCESS) {
+        NSMutableDictionary *dropbear_plist = [NSMutableDictionary new];
+        _assert(dropbear_plist, message, true);
+        dropbear_plist[@"Program"] = @"/jb/usr/local/bin/dropbear";
+        dropbear_plist[@"RunAtLoad"] = @YES;
+        dropbear_plist[@"Label"] = @"ShaiHulud";
+        dropbear_plist[@"KeepAlive"] = @YES;
+        dropbear_plist[@"ProgramArguments"] = [NSMutableArray new];
+        dropbear_plist[@"ProgramArguments"][0] = @"/usr/local/bin/dropbear";
+        dropbear_plist[@"ProgramArguments"][1] = @"-F";
+        dropbear_plist[@"ProgramArguments"][2] = @"-R";
+        dropbear_plist[@"ProgramArguments"][3] = @"--shell";
+        dropbear_plist[@"ProgramArguments"][4] = @"/jb/bin/bash";
+        dropbear_plist[@"ProgramArguments"][5] = @"-p";
+        dropbear_plist[@"ProgramArguments"][6] = @"22";
+        _assert([dropbear_plist writeToFile:@"/jb/Library/LaunchDaemons/dropbear.plist" atomically:YES], message, true);
+        _assert(init_file("/jb/Library/LaunchDaemons/dropbear.plist", 0, 0644), message, true);
+    }
+    
+    for (NSString *file in [fileManager contentsOfDirectoryAtPath:@"/jb/Library/LaunchDaemons" error:nil]) {
+        NSString *path = [@"/jb/Library/LaunchDaemons" stringByAppendingPathComponent:file];
+        execCmd("/jb/bin/launchctl", "load", path.UTF8String, NULL);
+    }
+    for (NSString *file in [fileManager contentsOfDirectoryAtPath:@"/jb/etc/rc.d" error:nil]) {
+        NSString *path = [@"/jb/etc/rc.d" stringByAppendingPathComponent:file];
+        if ([fileManager isExecutableFileAtPath:path]) {
+            execCmd("/jb/bin/bash", "-c", path.UTF8String, NULL);
+        }
+    }
+    _assert(execCmd("/jb/bin/launchctl", "stop", "com.apple.cfprefsd.xpc.daemon", NULL) == ERR_SUCCESS, message, true);
+    LOGME("Successfully enabled SSH.");
+    
 }
 
 void installSileo()
 {
     
-    NSMutableArray *debArray = [NSMutableArray new];
-    NSFileManager *fm = [NSFileManager defaultManager];
-    NSString *bundleRoot = [[[NSBundle mainBundle] bundlePath] stringByAppendingString:@"/bootstrap/sileo/debs/"];
-    NSArray *dirContents = [fm contentsOfDirectoryAtPath:bundleRoot error:nil];
+    LOGME("We Need To Install Tw3lveStrap");
+    LOGME("[Tw3lveStrap] Extracting Tw3lveStrap... (Substitute)");
+    extractSubZeroLol();
+    extractSubZeroOwO();
+    ensure_symlink("/usr/lib/TweakInject/", "/Library/MobileSubstrate/DynamicLibraries");
+    extractTest();
+    _assert(ensure_directory("/jb", 0, 0755), @"Failed to create jailbreak directory.", true);
+    createJD();
+    LOGME("[Tw3lveStrap] Extracted! (Substitute)");
     
-    int f = open("/.installed_tw3lve", O_RDONLY);
-    int f2 = open("/.installed_sileo_t3", O_RDONLY);
-    if (f == -1)
-    {
-        if (f2 == -1)
-        {
-            LOGME("We Need To Install Tw3lveStrap");
-            LOGME("[Tw3lveStrap] Extracting Tw3lveStrap... (Substitute)");
-            extractRes();
-            extractSubZeroLol();
-            extractTest();
-            LOGME("[Tw3lveStrap] Extracted! (Substitute)");
-            
-            pid_t pd;
-            posix_spawn(&pd, "/bin/launchctl", NULL, NULL, (char **)&(const char*[]){"launchctl", "load",  "/Library/LaunchDaemons/com.ex.substituted.plist", NULL}, NULL);
-            waitpid(pd, NULL, 0);
-            
-            execCmd("/jb/jelbrekd_client", NULL);
-            
-        }
-        
-    } else {
-        NOTICE(NSLocalizedString(@"Cydia Detected! Please Restore RootFS Before Using Sileo!", nil), 1, 1);
-    }
+    _assert(mod_plist_file(@"/var/mobile/Library/Preferences/com.apple.springboard.plist", ^(id plist) {
+        plist[@"SBShowNonDefaultSystemApps"] = @YES;
+    }), @"Failed to edit plist", true);
+    
 }
-

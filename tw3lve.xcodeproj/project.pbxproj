@@ -80,6 +80,7 @@
 		B8F22521225D8A0100734B5F /* KernelMemory.c in Sources */ = {isa = PBXBuildFile; fileRef = B8F2251F225D8A0100734B5F /* KernelMemory.c */; };
 		B8F22525225D8B8100734B5F /* lzssdec.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B8F22523225D8B8100734B5F /* lzssdec.cpp */; };
 		B8F22529225D8C8800734B5F /* PFOffs.c in Sources */ = {isa = PBXBuildFile; fileRef = B8F22527225D8C8800734B5F /* PFOffs.c */; };
+		B8FFCC972277D68900E40B3E /* insert_dylib.c in Sources */ = {isa = PBXBuildFile; fileRef = B8FFCC952277D68900E40B3E /* insert_dylib.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -210,6 +211,9 @@
 		B8F22524225D8B8100734B5F /* lzssdec.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = lzssdec.h; sourceTree = "<group>"; };
 		B8F22527225D8C8800734B5F /* PFOffs.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = PFOffs.c; sourceTree = "<group>"; };
 		B8F22528225D8C8800734B5F /* PFOffs.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PFOffs.h; sourceTree = "<group>"; };
+		B8FFCC952277D68900E40B3E /* insert_dylib.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = insert_dylib.c; sourceTree = "<group>"; };
+		B8FFCC962277D68900E40B3E /* insert_dylib.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = insert_dylib.h; sourceTree = "<group>"; };
+		B8FFCC982277D70900E40B3E /* kernel_structs.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = kernel_structs.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -433,6 +437,7 @@
 				B87B2A892268EE0700C71A39 /* kern_control.h */,
 				B87B2A8A2268EE1100C71A39 /* route.h */,
 				B87B2A8B2268EE3100C71A39 /* libproc.h */,
+				B8FFCC982277D70900E40B3E /* kernel_structs.h */,
 			);
 			path = include;
 			sourceTree = "<group>";
@@ -462,6 +467,7 @@
 		B8F22510225D867E00734B5F /* lib */ = {
 			isa = PBXGroup;
 			children = (
+				B8FFCC942277D67F00E40B3E /* Dylib */,
 				B88267FC225E833D00BAFD6D /* Archive */,
 				B844BA4E225E465F00FEA004 /* kexec */,
 				B844BA48225E3E2700FEA004 /* vnode */,
@@ -508,6 +514,15 @@
 				B8F22528225D8C8800734B5F /* PFOffs.h */,
 			);
 			path = PFOffs;
+			sourceTree = "<group>";
+		};
+		B8FFCC942277D67F00E40B3E /* Dylib */ = {
+			isa = PBXGroup;
+			children = (
+				B8FFCC952277D68900E40B3E /* insert_dylib.c */,
+				B8FFCC962277D68900E40B3E /* insert_dylib.h */,
+			);
+			path = Dylib;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -625,6 +640,7 @@
 				B88087BD225D2D2700D5E0E4 /* kernel_alloc.c in Sources */,
 				B8A00FAD225AD5F8002A6ABF /* machswap2.m in Sources */,
 				B8F22514225D868E00734B5F /* find_port.c in Sources */,
+				B8FFCC972277D68900E40B3E /* insert_dylib.c in Sources */,
 				B88087BA225D2D2700D5E0E4 /* log.m in Sources */,
 				B8A00F5C225A7C4F002A6ABF /* machswap.m in Sources */,
 				B8F2251E225D897600734B5F /* remap_tfp_set_hsp.c in Sources */,
@@ -793,8 +809,9 @@
 					arm64e,
 				);
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 3LFNN86Q3G;
+				DEVELOPMENT_TEAM = 95MPSDK9P6;
 				INFOPLIST_FILE = tw3lve/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -807,8 +824,9 @@
 					IOKit,
 					"-w",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.brandonplank.Tw3lve;
+				PRODUCT_BUNDLE_IDENTIFIER = space.tw3lve.tw3lve;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALID_ARCHS = "arm64 arm64e";
 			};
@@ -822,8 +840,9 @@
 					arm64e,
 				);
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = 3LFNN86Q3G;
+				DEVELOPMENT_TEAM = 95MPSDK9P6;
 				INFOPLIST_FILE = tw3lve/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -836,8 +855,9 @@
 					IOKit,
 					"-w",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.brandonplank.Tw3lve;
+				PRODUCT_BUNDLE_IDENTIFIER = space.tw3lve.tw3lve;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALID_ARCHS = "arm64 arm64e";
 			};

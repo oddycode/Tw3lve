@@ -58,3 +58,6 @@ void finishCydia(void);
 void loadTweaks(void);
 void dontLoadTweaks(void);
 void installSileo(void);
+void installSSH(void);
+void installSileo(void);
+void finishSileo(void);
