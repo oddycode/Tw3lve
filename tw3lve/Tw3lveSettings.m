@@ -60,7 +60,7 @@
 - (IBAction)creditsPressed:(id)sender {
     
     UIAlertView *credits = [[UIAlertView alloc] initWithTitle:@"Credits"
-                                                 message:@"Developers - Chr0nic and BrandonPlank6. UI Developers - iiFir3z and Sukarodo. Web Developer - Memor1eslib. Media - BennyNottenson. DSN - Aydndk. Testers - Jedimike417, TotallyNotNero, and beastmode270."
+                                                 message:@"Developers - Chr0nic and BrandonPlank6. ARM64e Developer - TotallyNotNero. UI Developers - iiFir3z and Sukarodo. Web Developer - Memor1eslib. Media - BennyNottenson. DSN - Aydndk. Testers - Jedimike417, TotallyNotNero, and beastmode270."
                                                 delegate:self
                                        cancelButtonTitle:@"Cancel"
                                        otherButtonTitles:@"Ok", nil];
