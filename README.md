@@ -15,7 +15,6 @@ iOS 12-12.1.2 Jailbreak (WORK IN PROGRESS DO NOT USE)
 * Tweak injection
 
 ## TODO:
-* Fix Bugs (Performance
 * Use Substituite
 * Sileo
 * Jelbrekd
